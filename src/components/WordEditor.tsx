@@ -1,20 +1,33 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { exportToDocx } from "@/utils/exportUtils";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 
 interface WordEditorProps {
   initialContent: string;
   title: string;
+  onReapplyStyle?: (selectedText: string, fullContent: string) => Promise<void>;
 }
 
-const WordEditor: React.FC<WordEditorProps> = ({ initialContent, title }) => {
+const WordEditor: React.FC<WordEditorProps> = ({ 
+  initialContent, 
+  title,
+  onReapplyStyle 
+}) => {
   const [content, setContent] = useState("");
   const [isMounted, setIsMounted] = useState(false);
+  const quillRef = useRef<ReactQuill>(null);
+  const [selectedText, setSelectedText] = useState("");
 
   useEffect(() => {
     setIsMounted(true);
@@ -28,6 +41,32 @@ const WordEditor: React.FC<WordEditorProps> = ({ initialContent, title }) => {
     } catch (error) {
       console.error("Export error:", error);
       toast.error("Failed to export document. Please try again.");
+    }
+  };
+
+  const handleSelectionChange = () => {
+    if (!quillRef.current) return;
+    
+    const quill = quillRef.current.getEditor();
+    const range = quill.getSelection();
+    
+    if (range && range.length > 0) {
+      const text = quill.getText(range.index, range.length);
+      setSelectedText(text);
+    } else {
+      setSelectedText("");
+    }
+  };
+
+  const handleReapplyStyle = async () => {
+    if (!selectedText || !onReapplyStyle) return;
+    
+    try {
+      toast.info("Reapplying style to selected text...");
+      await onReapplyStyle(selectedText, content);
+    } catch (error) {
+      console.error("Style reapply error:", error);
+      toast.error("Failed to reapply style. Please try again.");
     }
   };
 
@@ -72,16 +111,30 @@ const WordEditor: React.FC<WordEditorProps> = ({ initialContent, title }) => {
             Export as DOCX
           </Button>
         </div>
-        <div className="p-0 bg-white">
-          <ReactQuill
-            theme="snow"
-            value={content}
-            onChange={setContent}
-            modules={modules}
-            formats={formats}
-            className="min-h-[500px] rounded-b-lg"
-          />
-        </div>
+        <ContextMenu>
+          <ContextMenuTrigger>
+            <div className="p-0 bg-white">
+              <ReactQuill
+                ref={quillRef}
+                theme="snow"
+                value={content}
+                onChange={setContent}
+                onChangeSelection={handleSelectionChange}
+                modules={modules}
+                formats={formats}
+                className="min-h-[500px] rounded-b-lg"
+              />
+            </div>
+          </ContextMenuTrigger>
+          <ContextMenuContent>
+            <ContextMenuItem 
+              disabled={!selectedText}
+              onClick={handleReapplyStyle}
+            >
+              Reapply Style
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
       </Card>
     </div>
   );

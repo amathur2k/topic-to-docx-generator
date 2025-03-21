@@ -1,121 +1,137 @@
 
-import { Document, Paragraph, TextRun, HeadingLevel, Packer } from "docx";
+import { Document, Packer, Paragraph, TextRun, HeadingLevel } from "docx";
 import { saveAs } from "file-saver";
 
 /**
- * Exports rich text content to a DOCX file
+ * Exports content to a Word document (DOCX) file
+ * @param title Document title
+ * @param htmlContent HTML content to be converted to DOCX
  */
-export const exportToDocx = async (title: string, htmlContent: string): Promise<void> => {
-  // Create a simple conversion of HTML to DOCX elements
-  // Note: This is a simplified version - a real implementation would have more robust HTML parsing
-  const doc = new Document({
-    title: title,
-    sections: [], // Empty sections array that will be populated below
-  });
-
-  // Simple parsing of HTML - in a real app you would use a proper HTML to DOCX converter
-  // This just provides a basic conversion for demonstration purposes
-  const cleanedHtml = htmlContent.replace(/<[^>]*>/g, match => {
-    if (match.includes("<h1")) return "##h1##";
-    if (match.includes("<h2")) return "##h2##";
-    if (match.includes("<h3")) return "##h3##";
-    if (match.includes("<p")) return "##p##";
-    if (match.includes("<li")) return "##li##";
-    if (match.includes("<strong") || match.includes("<b")) return "##b##";
-    if (match.includes("<em") || match.includes("<i")) return "##i##";
-    if (match.includes("</")) return "##end##";
-    return "";
-  });
-
-  // Split by our markers
-  const parts = cleanedHtml.split("##");
-  const paragraphs: Paragraph[] = [];
-  
-  let currentText = "";
-  let isInBold = false;
-  let isInItalic = false;
-  let currentHeadingLevel: typeof HeadingLevel | undefined = undefined;
-  let isList = false;
-
-  // Process each part
-  for (const part of parts) {
-    if (part === "h1") {
-      if (currentText) paragraphs.push(createParagraph(currentText, currentHeadingLevel, isInBold, isInItalic));
-      currentText = "";
-      currentHeadingLevel = HeadingLevel.HEADING_1;
-      isInBold = false;
-      isInItalic = false;
-    } else if (part === "h2") {
-      if (currentText) paragraphs.push(createParagraph(currentText, currentHeadingLevel, isInBold, isInItalic));
-      currentText = "";
-      currentHeadingLevel = HeadingLevel.HEADING_2;
-      isInBold = false;
-      isInItalic = false;
-    } else if (part === "h3") {
-      if (currentText) paragraphs.push(createParagraph(currentText, currentHeadingLevel, isInBold, isInItalic));
-      currentText = "";
-      currentHeadingLevel = HeadingLevel.HEADING_3;
-      isInBold = false;
-      isInItalic = false;
-    } else if (part === "p") {
-      if (currentText) paragraphs.push(createParagraph(currentText, currentHeadingLevel, isInBold, isInItalic));
-      currentText = "";
-      currentHeadingLevel = undefined;
-      isInBold = false;
-      isInItalic = false;
-    } else if (part === "li") {
-      if (currentText) paragraphs.push(createParagraph(currentText, currentHeadingLevel, isInBold, isInItalic));
-      currentText = "• ";
-      currentHeadingLevel = undefined;
-      isInBold = false;
-      isInItalic = false;
-      isList = true;
-    } else if (part === "b") {
-      isInBold = true;
-    } else if (part === "i") {
-      isInItalic = true;
-    } else if (part === "end") {
-      isInBold = false;
-      isInItalic = false;
-      if (isList) {
-        paragraphs.push(createParagraph(currentText, currentHeadingLevel, isInBold, isInItalic));
-        currentText = "";
-        isList = false;
-      }
-    } else if (part) {
-      currentText += part;
-    }
+export const exportToDocx = async (
+  title: string,
+  htmlContent: string
+): Promise<void> => {
+  try {
+    // Parse HTML content into a document structure
+    const docxElements = parseHtmlToDocxElements(htmlContent);
+    
+    // Create DOCX document
+    const doc = new Document({
+      sections: [{
+        properties: {},
+        children: [
+          new Paragraph({
+            text: title,
+            heading: HeadingLevel.TITLE,
+            spacing: {
+              after: 200,
+            },
+          }),
+          ...docxElements,
+        ],
+      }],
+    });
+    
+    // Generate DOCX buffer
+    const buffer = await Packer.toBuffer(doc);
+    
+    // Save document
+    const fileName = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_document.docx`;
+    saveAs(new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }), fileName);
+    
+    console.log("Document exported successfully");
+  } catch (error) {
+    console.error("Error exporting document:", error);
+    throw new Error("Failed to export document");
   }
-
-  // Add any remaining text
-  if (currentText) {
-    paragraphs.push(createParagraph(currentText, currentHeadingLevel, isInBold, isInItalic));
-  }
-
-  // Add section with paragraphs
-  doc.addSection({
-    children: paragraphs,
-  });
-
-  // Generate and save file
-  const buffer = await Packer.toBuffer(doc);
-  saveAs(new Blob([buffer]), `${title.replace(/[^a-z0-9]/gi, "_").toLowerCase() || "document"}.docx`);
 };
 
-function createParagraph(
-  text: string, 
-  headingLevel?: typeof HeadingLevel, 
-  isBold: boolean = false,
-  isItalic: boolean = false,
-): Paragraph {
-  const textRun = new TextRun({
-    text: text.trim(),
-    bold: isBold,
-    italics: isItalic,
-  });
+/**
+ * Parses HTML content into DOCX elements
+ */
+const parseHtmlToDocxElements = (htmlContent: string): Paragraph[] => {
+  // Create a temporary div to parse HTML
+  const tempDiv = document.createElement("div");
+  tempDiv.innerHTML = htmlContent;
+  
+  const paragraphs: Paragraph[] = [];
+  
+  // Process child nodes recursively
+  for (const node of Array.from(tempDiv.childNodes)) {
+    processDomNode(node, paragraphs);
+  }
+  
+  return paragraphs;
+};
 
-  return new Paragraph({
-    heading: headingLevel,
-    children: [textRun],
-  });
-}
+/**
+ * Processes a DOM node and converts it to DOCX elements
+ */
+const processDomNode = (node: Node, paragraphs: Paragraph[]): void => {
+  if (node.nodeType === Node.TEXT_NODE) {
+    // Text node
+    const text = node.textContent?.trim();
+    if (text) {
+      paragraphs.push(
+        new Paragraph({
+          children: [new TextRun(text)],
+        })
+      );
+    }
+  } else if (node.nodeType === Node.ELEMENT_NODE) {
+    // Element node
+    const element = node as HTMLElement;
+    const tagName = element.tagName.toLowerCase();
+    
+    if (tagName === "h1") {
+      paragraphs.push(
+        new Paragraph({
+          text: element.textContent || "",
+          heading: HeadingLevel.HEADING_1,
+          spacing: { before: 240, after: 120 },
+        })
+      );
+    } else if (tagName === "h2") {
+      paragraphs.push(
+        new Paragraph({
+          text: element.textContent || "",
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 240, after: 120 },
+        })
+      );
+    } else if (tagName === "h3") {
+      paragraphs.push(
+        new Paragraph({
+          text: element.textContent || "",
+          heading: HeadingLevel.HEADING_3,
+          spacing: { before: 240, after: 120 },
+        })
+      );
+    } else if (tagName === "p") {
+      paragraphs.push(
+        new Paragraph({
+          children: [new TextRun(element.textContent || "")],
+          spacing: { before: 120, after: 120 },
+        })
+      );
+    } else if (tagName === "ul" || tagName === "ol") {
+      // Process list items
+      for (const child of Array.from(element.children)) {
+        if (child.tagName.toLowerCase() === "li") {
+          paragraphs.push(
+            new Paragraph({
+              text: `• ${child.textContent || ""}`,
+              spacing: { before: 80, after: 80 },
+              indent: { left: 720 },
+            })
+          );
+        }
+      }
+    } else {
+      // Process children recursively
+      for (const child of Array.from(element.childNodes)) {
+        processDomNode(child, paragraphs);
+      }
+    }
+  }
+};

@@ -10,11 +10,13 @@ const Index = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState("");
   const [topic, setTopic] = useState("");
+  const [lastInstructions, setLastInstructions] = useState("");
 
   const handleGenerate = async (topicValue: string, instructions: string) => {
     try {
       setIsGenerating(true);
       setTopic(topicValue);
+      setLastInstructions(instructions);
       
       // Generate content
       const content = await generateContent2(topicValue, instructions);
@@ -28,6 +30,36 @@ const Index = () => {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleReapplyStyle = async (selectedText: string, fullContent: string) => {
+    try {
+      setIsGenerating(true);
+      
+      // Generate content focused on the selected text
+      const modifiedContent = await modifyContent(selectedText, fullContent, topic, lastInstructions);
+      
+      // Update state with generated content
+      setGeneratedContent(modifiedContent);
+      toast.success("Style reapplied successfully!");
+    } catch (error) {
+      console.error("Style reapply error:", error);
+      toast.error("Failed to reapply style. Please try again.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Function to modify content based on selected text
+  const modifyContent = async (
+    selectedText: string,
+    fullContent: string,
+    topic: string,
+    instructions: string
+  ): Promise<string> => {
+    // For now, we'll use the same generateContent2 function with a modified instruction
+    const modifiedInstructions = `${instructions}\n\nFocus on improving this selected part: "${selectedText}"`;
+    return await generateContent2(topic, modifiedInstructions);
   };
 
   return (
@@ -62,6 +94,7 @@ const Index = () => {
             <WordEditor 
               initialContent={generatedContent} 
               title={topic}
+              onReapplyStyle={handleReapplyStyle}
             />
           )}
         </div>
