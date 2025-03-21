@@ -60,6 +60,19 @@ This project is built with .
 - shadcn-ui
 - Tailwind CSS
 
+## DeepSeek API Setup
+
+This application uses the DeepSeek Reasoner model for content generation. To use this feature, you need to:
+
+1. Get an API key from DeepSeek
+2. Create a `.env` file in the root directory (you can copy from `.env.example`)
+3. Add your DeepSeek API key to the `.env` file:
+   ```
+   VITE_DEEPSEEK_API_KEY=your_actual_deepseek_api_key
+   ```
+
+Without a valid API key, the content generation feature will not work.
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/6e272053-aaff-43de-b5d3-81e9ad3bd7e0) and click on Share -> Publish.
