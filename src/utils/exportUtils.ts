@@ -9,7 +9,8 @@ export const exportToDocx = async (title: string, htmlContent: string): Promise<
   // Create a simple conversion of HTML to DOCX elements
   // Note: This is a simplified version - a real implementation would have more robust HTML parsing
   const doc = new Document({
-    title,
+    title: title,
+    sections: [], // Empty sections array that will be populated below
   });
 
   // Simple parsing of HTML - in a real app you would use a proper HTML to DOCX converter
@@ -33,7 +34,7 @@ export const exportToDocx = async (title: string, htmlContent: string): Promise<
   let currentText = "";
   let isInBold = false;
   let isInItalic = false;
-  let currentHeadingLevel: HeadingLevel | undefined = undefined;
+  let currentHeadingLevel: typeof HeadingLevel | undefined = undefined;
   let isList = false;
 
   // Process each part
@@ -91,8 +92,8 @@ export const exportToDocx = async (title: string, htmlContent: string): Promise<
     paragraphs.push(createParagraph(currentText, currentHeadingLevel, isInBold, isInItalic));
   }
 
+  // Add section with paragraphs
   doc.addSection({
-    properties: {},
     children: paragraphs,
   });
 
@@ -103,7 +104,7 @@ export const exportToDocx = async (title: string, htmlContent: string): Promise<
 
 function createParagraph(
   text: string, 
-  headingLevel?: HeadingLevel, 
+  headingLevel?: typeof HeadingLevel, 
   isBold: boolean = false,
   isItalic: boolean = false,
 ): Paragraph {
