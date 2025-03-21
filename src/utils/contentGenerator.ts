@@ -1,3 +1,13 @@
+export const generateContent2 = async (
+  topic: string, 
+  instructions: string
+): Promise<string> => {
+
+  return "Hello World 2 Blah Blah<br>Line 1<br>Line 2<br>Line 3";
+}
+
+
+
 /**
  * Generates content using DeepSeek Reasoner model based on topic and instructions
  */
@@ -15,8 +25,7 @@ export const generateContent = async (
     // Get API key from environment variable or configuration
     // In production, this should be stored securely
     //
-    // const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY;
-    const apiKey = "sk-5b94826f47d14ee984c3252cdd35eb9a";
+    const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY;
 
     const xxx = await readWritingStylePrompt();
 

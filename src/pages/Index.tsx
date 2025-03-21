@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import ContentForm from "@/components/ContentForm";
 import WordEditor from "@/components/WordEditor";
 import LoadingIndicator from "@/components/LoadingIndicator";
-import { generateContent } from "@/utils/contentGenerator";
+import { generateContent, generateContent2 } from "@/utils/contentGenerator";
 import { toast } from "sonner";
 
 const Index = () => {
@@ -17,7 +17,7 @@ const Index = () => {
       setTopic(topicValue);
       
       // Generate content
-      const content = await generateContent(topicValue, instructions);
+      const content = await generateContent2(topicValue, instructions);
       
       // Update state with generated content
       setGeneratedContent(content);
