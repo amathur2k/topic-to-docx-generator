@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from "react";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
@@ -98,7 +97,7 @@ const WordEditor: React.FC<WordEditorProps> = ({
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6 slide-up">
+    <div className="w-full max-w-none">
       <Card className="overflow-hidden glass-effect shadow-glass">
         <div className="p-3 border-b flex items-center justify-between bg-background/50">
           <h3 className="font-medium truncate">{title || "Untitled Document"}</h3>
@@ -116,13 +115,13 @@ const WordEditor: React.FC<WordEditorProps> = ({
             <div className="p-0 bg-white">
               <ReactQuill
                 ref={quillRef}
-                theme="snow"
                 value={content}
                 onChange={setContent}
                 onChangeSelection={handleSelectionChange}
                 modules={modules}
                 formats={formats}
-                className="min-h-[500px] rounded-b-lg"
+                className="w-full min-h-[500px]"
+                theme="snow"
               />
             </div>
           </ContextMenuTrigger>

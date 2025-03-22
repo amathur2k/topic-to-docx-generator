@@ -1,4 +1,3 @@
-
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from "docx";
 import { saveAs } from "file-saver";
 
@@ -33,11 +32,11 @@ export const exportToDocx = async (
     });
     
     // Generate DOCX buffer
-    const buffer = await Packer.toBuffer(doc);
+    const buffer = await Packer.toBlob(doc);
     
     // Save document
     const fileName = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_document.docx`;
-    saveAs(new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }), fileName);
+    saveAs(buffer, fileName);
     
     console.log("Document exported successfully");
   } catch (error) {

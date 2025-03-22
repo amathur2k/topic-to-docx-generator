@@ -1,3 +1,8 @@
+import { Anthropic } from '@anthropic-ai/sdk';
+
+// Import the writing style prompt
+import writingStylePrompt from '../assets/writing-style-prompt.txt?raw';
+
 export const generateContent2 = async (
   topic: string, 
   instructions: string
@@ -10,61 +15,137 @@ export const generateContent = async (
   topic: string, 
   instructions: string
 ): Promise<string> => {
-
-  return "";
-}
-
-/**
- * Generates content using DeepSeek Reasoner model based on topic and instructions
- */
-export const generateContent3 = async (
-  topic: string, 
-  instructions: string
-): Promise<string> => {
   try {
     console.log("Generating content for:", topic);
     console.log("With instructions:", instructions);
     
-    const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY;
-
     const xxx = await readWritingStylePrompt();
-
-    if (!apiKey) {
-      console.error("DeepSeek API key not found. Make sure to set the VITE_DEEPSEEK_API_KEY environment variable.");
-      throw new Error("DeepSeek API key not configured");
+    
+    // Initialize the multi-agent system
+    const MAX_ITERATIONS = 3;
+    let currentIteration = 0;
+    let contentPlan = "";
+    let contentDraft = "";
+    let evaluation = "";
+    let isSatisfied = false;
+    let finalContent = "";
+    
+    // Get the creation plan from the Planner
+    console.log("🤖 Planner: Creating initial content plan...");
+    contentPlan = await callLLM2(`
+      You are a Content Planning Agent. Your job is to create a detailed plan for writing content on "${topic}".
+      
+      Writing Style Guide: ${xxx}
+      
+      Additional instructions: ${instructions}
+      
+      Create a structured plan that includes:
+      1. The main sections or chapters
+      2. Key points to cover in each section
+      3. Suggested approach for the content
+      4. Estimated length and detail level for each section
+      
+      Return only the plan in a clear, structured format.
+    `);
+    
+    // Main loop - continue until satisfied or max iterations reached
+    while (!isSatisfied && currentIteration < MAX_ITERATIONS) {
+      currentIteration++;
+      console.log(`🔄 Iteration ${currentIteration} of ${MAX_ITERATIONS}`);
+      
+      // Writer creates content based on the plan
+      console.log("✍️ Writer: Generating content based on plan...");
+      contentDraft = await callLLM2(`
+        You are a Content Writer Agent. Your job is to write high-quality content based on a provided plan.
+        
+        Topic: "${topic}"
+        Writing Style Guide: ${xxx}
+        Additional Instructions: ${instructions}
+        
+        Content Plan:
+        ${contentPlan}
+        
+        ${currentIteration > 1 ? `Previous Evaluation: ${evaluation}` : ''}
+        
+        Please write the content following the plan and style guide. Format your content with proper HTML tags:
+        - Use <h1> for the main title
+        - Use <h2> for section headers
+        - Use <h3> for subsection headers
+        - Use <p> for paragraphs
+        - Use <ul> and <li> for unordered lists
+        - Use <ol> and <li> for ordered lists
+        - Use <strong> for bold text
+        - Use <em> for italicized text
+        
+        Focus on maintaining the specified writing style while delivering informative and engaging content.
+      `);
+      
+      // Evaluator assesses the content
+      console.log("🔍 Evaluator: Reviewing content...");
+      evaluation = await callLLM2(`
+        You are a Content Evaluation Agent. Your job is to critically evaluate content based on quality, adherence to style guide, and overall effectiveness.
+        
+        Topic: "${topic}"
+        Writing Style Guide: ${xxx}
+        Additional Instructions: ${instructions}
+        Content Plan:
+        ${contentPlan}
+        
+        Content to Evaluate:
+        ${contentDraft}
+        
+        Please evaluate this content on:
+        1. Adherence to the writing style guide
+        2. Quality of information and presentation
+        3. Structure and flow
+        4. Grammar and clarity
+        5. Overall effectiveness
+        
+        Provide specific feedback for improvement. End your evaluation with one of these statements:
+        - "SATISFIED: The content meets all requirements." 
+        - "NEEDS REVISION: The content requires the following improvements: [list specific improvements]"
+      `);
+      
+      // Check if the evaluator is satisfied
+      isSatisfied = evaluation.includes("SATISFIED");
+      
+      if (isSatisfied) {
+        console.log("✅ Evaluator: Content is satisfactory!");
+        finalContent = contentDraft;
+      } else if (currentIteration < MAX_ITERATIONS) {
+        console.log("⚠️ Evaluator: Content needs revision. Planning next iteration...");
+        
+        // Planner coordinates the revision
+        contentPlan = await callLLM2(`
+          You are a Content Planning Agent. Your job is to revise the content plan based on evaluation feedback.
+          
+          Topic: "${topic}"
+          Writing Style Guide: ${xxx}
+          Additional Instructions: ${instructions}
+          
+          Original Plan:
+          ${contentPlan}
+          
+          Current Content:
+          ${contentDraft}
+          
+          Evaluation Feedback:
+          ${evaluation}
+          
+          Please revise the content plan to address the feedback. Create a structured plan that will help the Writer agent improve the content in the next iteration.
+          Focus on maintaining the specified writing style while addressing the issues raised by the Evaluator.
+        `);
+      }
     }
     
-    // Construct prompt for the DeepSeek Reasoner model
-    const prompt = `
-      Write an article  (with autobiographical elements)  based on the writing style prompt : ${xxx} . 
-      The topic for the article would be ${topic}.
-      Generate detailed, well-structured content about the following topic:
-      
-      Topic: ${topic}
-      
-      Additional Instructions: ${instructions}
-
-      
-      
-      Please format the content using HTML tags with proper structure including:
-      - Use <h1> for the main title
-      - Use <h2> for section headers
-      - Use <h3> for subsection headers
-      - Use <p> for paragraphs
-      - Use <ul> and <li> for unordered lists
-      - Use <ol> and <li> for ordered lists
-      - Use <strong> for bold text
-      - Use <em> for italicized text
-      
-      Make the content informative, accurate, and professional.
-    `;
+    // If we reached max iterations without satisfaction, use the last draft
+    if (!isSatisfied) {
+      console.log("⚠️ Reached maximum iterations without full satisfaction. Using best version.");
+      finalContent = contentDraft;
+    }
     
-    // Call the LLM with the prompt
-    const generatedContent = await callLLM(prompt);
-    
-    // Ensure the content is properly formatted as HTML
-    // If the model returns markdown or plain text, additional formatting might be needed here
-    return ensureHtmlFormat(generatedContent, topic);
+    // Format and return the final content
+    return ensureHtmlFormat(finalContent, topic);
   } catch (error) {
     console.error("Error generating content:", error);
     return `
@@ -148,21 +229,15 @@ const ensureHtmlFormat = (content: string, topic: string): string => {
 /**
  * Reads the writing style prompt from file
  */
-export const readWritingStylePrompt = async (): Promise<string> => {
+export async function readWritingStylePrompt(): Promise<string> {
   try {
-    const fs = await import('fs/promises');
-    return await fs.readFile('C:\\Users\\ADMIN\\OneDrive\\upwork\\benlucas\\ben_lucas_final_writing_style_prompt.txt', 'utf-8');
+    return writingStylePrompt;
   } catch (error) {
     console.error("Error loading writing style prompt:", error);
     return "Default writing style: Write in a clear, concise, and engaging manner.";
   }
-};
+}
 
-/**
- * Makes a call to the DeepSeek Reasoner model API
- * @param prompt The prompt to send to the model
- * @returns The generated content from the model
- */
 export async function callLLM(prompt: string): Promise<string> {
   // DeepSeek API endpoint
   const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
@@ -191,7 +266,7 @@ export async function callLLM(prompt: string): Promise<string> {
         }
       ],
       temperature: 1,
-      max_tokens: 8000
+      max_tokens: 12000
     })
   });
   
@@ -205,4 +280,50 @@ export async function callLLM(prompt: string): Promise<string> {
   
   // Extract and return the generated content
   return data.choices[0].message.content;
+}
+
+/**
+ * Makes a call to the Anthropic Claude 3.5 Haiku API using the official SDK
+ * @param prompt The prompt to send to the model
+ * @returns The generated content from the model
+ */
+export async function callLLM2(prompt: string): Promise<string> {
+  // Get API key from environment variable
+  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+  
+  if (!apiKey) {
+    console.error("Anthropic API key not found. Make sure to set the VITE_ANTHROPIC_API_KEY environment variable.");
+    throw new Error("Anthropic API key not configured");
+  }
+  
+  try {
+    // Initialize the Anthropic client
+    const anthropic = new Anthropic({
+      apiKey: apiKey,
+      dangerouslyAllowBrowser: true
+    });
+    
+    // Create a message using the client
+    const message = await anthropic.messages.create({
+      model: "claude-3-5-haiku-latest",
+      temperature:1,
+      max_tokens: 8192,
+      messages: [
+        {
+          role: "user",
+          content: prompt
+        }
+      ]
+    });
+    
+    // Return the generated content
+    const content = message.content[0];
+    if ('text' in content) {
+      return content.text;
+    }
+    throw new Error('Unexpected response format from Anthropic API');
+  } catch (error) {
+    console.error("Error calling Anthropic Claude API:", error);
+    throw new Error(`Failed to generate content with Anthropic Claude: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
