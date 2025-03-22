@@ -83,23 +83,19 @@ export const generateContent = async (
       // Evaluator assesses the content
       console.log("🔍 Evaluator: Reviewing content...");
       evaluation = await callLLM2(`
-        You are a Content Evaluation Agent. Your job is to critically evaluate content based on quality, adherence to style guide, and overall effectiveness.
+        You are a Content Evaluation Agent. Your only job is to  evaluate if content is on the lines of the style guide and Additional Instructions.
         
         Topic: "${topic}"
         Writing Style Guide: ${xxx}
         Additional Instructions: ${instructions}
-        Content Plan:
-        ${contentPlan}
+        
         
         Content to Evaluate:
         ${contentDraft}
         
         Please evaluate this content on:
         1. Adherence to the writing style guide
-        2. Quality of information and presentation
-        3. Structure and flow
-        4. Grammar and clarity
-        5. Overall effectiveness
+        2. If the Additional Instructions are followed
         
         Provide specific feedback for improvement. End your evaluation with one of these statements:
         - "SATISFIED: The content meets all requirements." 
