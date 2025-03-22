@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import ContentForm from "@/components/ContentForm";
 import WordEditor from "@/components/WordEditor";
 import LoadingIndicator from "@/components/LoadingIndicator";
-import { generateContent, generateContent2 } from "@/utils/contentGenerator";
+import { generateContent, generateContent2, callLLM, readWritingStylePrompt } from "@/utils/contentGenerator";
 import { toast } from "sonner";
 
 const Index = () => {
@@ -19,7 +19,7 @@ const Index = () => {
       setLastInstructions(instructions);
       
       // Generate content
-      const content = await generateContent2(topicValue, instructions);
+      const content = await generateContent(topicValue, instructions);
       
       // Update state with generated content
       setGeneratedContent(content);
@@ -57,9 +57,12 @@ const Index = () => {
     topic: string,
     instructions: string
   ): Promise<string> => {
+    const xxx = await readWritingStylePrompt();
     // For now, we'll use the same generateContent2 function with a modified instruction
-    const modifiedInstructions = `${instructions}\n\nFocus on improving this selected part: "${selectedText}"`;
-    return await generateContent2(topic, modifiedInstructions);
+    const prompt = `From the full content "${fullContent}", please rewrite the selected part "${selectedText}" to give extra emphasis on the writing style below. Do not change any of the other text. return the full content with the selected part improved. Writing style: ${xxx}`;
+    return await callLLM(prompt);
+
+    //return await generateContent2(topic, modifiedInstructions);
   };
 
   return (

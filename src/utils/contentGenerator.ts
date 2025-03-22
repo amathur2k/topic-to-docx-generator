@@ -6,12 +6,18 @@ export const generateContent2 = async (
   return "Hello World 2 Blah Blah<br>Line 1<br>Line 2<br>Line 3";
 }
 
+export const generateContent = async (
+  topic: string, 
+  instructions: string
+): Promise<string> => {
 
+  return "";
+}
 
 /**
  * Generates content using DeepSeek Reasoner model based on topic and instructions
  */
-export const generateContent = async (
+export const generateContent3 = async (
   topic: string, 
   instructions: string
 ): Promise<string> => {
@@ -19,12 +25,6 @@ export const generateContent = async (
     console.log("Generating content for:", topic);
     console.log("With instructions:", instructions);
     
-    // DeepSeek API endpoint
-    const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
-    
-    // Get API key from environment variable or configuration
-    // In production, this should be stored securely
-    //
     const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY;
 
     const xxx = await readWritingStylePrompt();
@@ -59,36 +59,8 @@ export const generateContent = async (
       Make the content informative, accurate, and professional.
     `;
     
-    // Make the API request to DeepSeek
-    const response = await fetch(DEEPSEEK_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "deepseek-reasoner", // Replace with the correct model ID for DeepSeek Reasoner
-        messages: [
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 4000
-      })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("DeepSeek API error:", errorData);
-      throw new Error(`DeepSeek API error: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    // Extract and return the generated content
-    const generatedContent = data.choices[0].message.content;
+    // Call the LLM with the prompt
+    const generatedContent = await callLLM(prompt);
     
     // Ensure the content is properly formatted as HTML
     // If the model returns markdown or plain text, additional formatting might be needed here
@@ -176,7 +148,7 @@ const ensureHtmlFormat = (content: string, topic: string): string => {
 /**
  * Reads the writing style prompt from file
  */
-const readWritingStylePrompt = async (): Promise<string> => {
+export const readWritingStylePrompt = async (): Promise<string> => {
   try {
     const fs = await import('fs/promises');
     return await fs.readFile('C:\\Users\\ADMIN\\OneDrive\\upwork\\benlucas\\ben_lucas_final_writing_style_prompt.txt', 'utf-8');
@@ -185,3 +157,52 @@ const readWritingStylePrompt = async (): Promise<string> => {
     return "Default writing style: Write in a clear, concise, and engaging manner.";
   }
 };
+
+/**
+ * Makes a call to the DeepSeek Reasoner model API
+ * @param prompt The prompt to send to the model
+ * @returns The generated content from the model
+ */
+export async function callLLM(prompt: string): Promise<string> {
+  // DeepSeek API endpoint
+  const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
+  
+  // Get API key from environment variable or configuration
+  const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY;
+  
+  if (!apiKey) {
+    console.error("DeepSeek API key not found. Make sure to set the VITE_DEEPSEEK_API_KEY environment variable.");
+    throw new Error("DeepSeek API key not configured");
+  }
+  
+  // Make the API request to DeepSeek
+  const response = await fetch(DEEPSEEK_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: "deepseek-chat", // Replace with the correct model ID for DeepSeek Reasoner
+      messages: [
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 1,
+      max_tokens: 8000
+    })
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json();
+    console.error("DeepSeek API error:", errorData);
+    throw new Error(`DeepSeek API error: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  
+  // Extract and return the generated content
+  return data.choices[0].message.content;
+}
