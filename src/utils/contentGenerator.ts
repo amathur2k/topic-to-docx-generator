@@ -56,7 +56,7 @@ export const generateContent = async (
       // Writer creates content based on the plan
       console.log("✍️ Writer: Generating content based on plan...");
       contentDraft = await callLLM2(`
-        You are a Content Writer Agent. Your job is to write high-quality content based on a provided plan.
+        You are a Content Writer Agent. Your job is to write high-quality content adhering to the given Writing Style Guide and Additional Instructions.
         
         Topic: "${topic}"
         Writing Style Guide: ${xxx}
@@ -77,7 +77,7 @@ export const generateContent = async (
         - Use <strong> for bold text
         - Use <em> for italicized text
         
-        Focus on maintaining the specified writing style while delivering informative and engaging content.
+        Focus on maintaining the specified writing style. I want the complete content generated in one response. Allways generate the full content for the entire piece, do not ask me to confirm a draft.
       `);
       
       // Evaluator assesses the content
